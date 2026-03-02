@@ -1,7 +1,8 @@
 newtype int32 = x: int | 0 <= x < 0x1_0000_0000
 newtype addr = int32
 type addrArray = array<addr>
-datatype secondLevelPtr = Some(arr: addrArray) | Nil
+
+datatype secondLevelPtr = Nil | Some(arr: addrArray) 
 
 class PageTable{
 
@@ -9,23 +10,48 @@ var root: array<secondLevelPtr>
 const levelSizes := [10, 10]
 const offset := 12
 const pageSize: addr := 0x0FFF
+const numVpns: addr := 0x0010_0000
+const numOffsets := 0x1000
+const numVpnParts: addr := 0x0400
 var currPfn: addr
 
 predicate pageTableInvariant()
 reads this
-{0 <= currPfn < 0x100000 &&
-root.Length == 0x10_0000
-
+reads root
+{0 <= currPfn < numVpns &&
+root.Length == numVpns as int &&
+forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpns as int))
 }
 
-constructor() ensures pageTableInvariant(){
-  root := new secondLevelPtr[0x10_0000];
+constructor() 
+ensures pageTableInvariant()
+ensures fresh(root)
+{
+
+  root := new secondLevelPtr[numVpns];
+
+  new;
+
+  assert(root.Length == numVpns as int);
+  for i := 0 to numVpns as int
+    invariant root.Length == numVpns as int
+    invariant 0 <= i <= root.Length
+    invariant forall j: nat :: 0 <= j < i ==> root[j] == Nil
+    invariant fresh(root){
+    root[i] := Nil by {
+      assert(root.Length == numVpns as int);
+
+    }
+  }
   currPfn := 1;
+  assert(currPfn == 1 as addr);
+  assert(!root[0].Some?);
+  //assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil)));
   // completely null
 
 }
 method getVpn(vaddr: addr) returns(vpn: addr)
-ensures vpn < 0x10_0000{
+ensures 0 <= vpn < numVpns{
   var mask := 0xFFC0_0000;
   var bv := (vaddr as bv32 & mask as bv32);
   bv := bv >> 22;
@@ -34,23 +60,32 @@ ensures vpn < 0x10_0000{
 
 method maskVpn(vpn: addr, level: nat) returns(part: addr)
 requires 0 <= level <= 1
-ensures 0 <= part < 0x10_0000{
+ensures 0 <= part < numVpnParts
+{
   var bv: bv32;
   if(level == 1) {
-    var mask := 0x03FF;
-    bv := (vpn as bv32 & mask as bv32);
+    var mask: bv32 := 0x03FF;
+    bv := (vpn as bv32 & mask);
+    assert(bv <= mask);
+    assert(bv as nat <= mask as nat);
   }
   else {
     var mask := 0xF_FC00;
     bv := (vpn as bv32 & mask as bv32);
+    assert(bv <= mask);
     bv := bv >> 10;
+    assert(bv <= mask >> 10);
+    assert(mask >> 10 == 0x03FF as bv32);
+    assert(bv <= 0x03FF as bv32);
   }
-  part := bv as addr;
+  part := bv as addr;    
+  assert(bv <= 0x03FF);
 }
 
 // internal functions
 method tryInsertMapping(vpn: addr, pfn: addr) returns (err: nat)
 requires pageTableInvariant()
+ensures 0 <= err <= 1
 modifies root{
   var part1 := maskVpn(vpn, 0);
 
