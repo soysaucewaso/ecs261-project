@@ -52,9 +52,12 @@ ensures fresh(root)
   // completely null
 
 }
-lemma insertThenGet(){
+/*lemma insertThenGet(vpnPart1: addr, vpnPart2: addr, pfn: addr)
+requires 0 <= vpnPart1 < numVpnParts
+requires 0 <= vpnPart2 < numVpnParts{
+  var err := tryInsertMapping(vpnPart1, vpnPart2, pfn);
 
-}
+}*/
 
 method getVpn(vaddr: addr) returns(vpn: addr)
 ensures 0 <= vpn < numVpns{
@@ -94,7 +97,7 @@ requires 0 <= vpnPart1 < numVpnParts
 requires 0 <= vpnPart2 < numVpnParts
 ensures 0 <= err <= 1
 ensures pageTableInvariant()
-ensures err == 0 ==> root[vpnPart1] != Nil && root[vpnPart1].arr[vpnPart2] == pfn
+ensures err == 0 ==> root[vpnPart1].Some? && root[vpnPart1].arr[vpnPart2] == pfn
 modifies root
 modifies if root[vpnPart1].Some? then {root[vpnPart1].arr} else {}
 {
@@ -121,8 +124,13 @@ assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].
   if (entry2 == 0){
     entry2 := pfn;
     entry1.arr[vpnPart2] := entry2;
-    return 0;
-  } else if (entry2 == pfn){
+  }
+  
+
+  if (entry2 == pfn){
+    // important assertions
+    var getPfn := tryGetMapping(vpnPart1, vpnPart2);
+    assert(pfn == getPfn);
     return 0;
   } else{
     // vaddr is alr in use
@@ -184,3 +192,7 @@ method translate(vaddr: addr) requires false{
 }
 
 }
+
+/*method main(){
+  var pt := new PageTable();
+}*/
