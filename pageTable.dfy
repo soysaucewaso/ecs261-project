@@ -20,7 +20,9 @@ reads this
 reads root
 {0 <= currPfn < numVpns &&
 root.Length == numVpns as int &&
+// all pageTables have exactly `numVpns` entries
 forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))
+
 }
 
 constructor() 
@@ -50,6 +52,10 @@ ensures fresh(root)
   // completely null
 
 }
+lemma insertThenGet(){
+
+}
+
 method getVpn(vaddr: addr) returns(vpn: addr)
 ensures 0 <= vpn < numVpns{
   var mask := 0xFFC0_0000;
@@ -58,84 +64,89 @@ ensures 0 <= vpn < numVpns{
   vpn := bv as addr;
 }
 
-method maskVpn(vpn: addr, level: nat) returns(part: addr)
-requires 0 <= level <= 1
-ensures 0 <= part < numVpnParts
+method maskVpn(vpn: addr) returns(part1: addr, part2: addr)
+requires 0 <= vpn < numVpns
+ensures 0 <= part1 < numVpnParts
+ensures 0 <= part2 < numVpnParts
 {
-  var bv: bv32;
-  if(level == 1) {
-    var mask: bv32 := 0x03FF;
-    bv := (vpn as bv32 & mask);
-    assert(bv <= mask);
-    assert(bv as nat <= mask as nat);
-  }
-  else {
-    var mask := 0xF_FC00;
-    bv := (vpn as bv32 & mask as bv32);
-    assert(bv <= mask);
-    bv := bv >> 10;
-    assert(bv <= mask >> 10);
-    assert(mask >> 10 == 0x03FF as bv32);
-    assert(bv <= 0x03FF as bv32);
-  }
-  part := bv as addr;    
-  assert(bv <= 0x03FF);
+  // splitting a page number into two indexes.
+  var mask1: bv32 := 0x03FF;
+  var b1 := (vpn as bv32 & mask1);
+  assert(b1 <= mask1);
+  assert(b1 as nat <= mask1 as nat);
+
+
+  var mask2 := 0xF_FC00;
+  var b2 := (vpn as bv32 & mask2 as bv32);
+  assert(b2 <= mask2);
+  b2 := b2 >> 10;
+  assert(b2 <= mask2 >> 10);
+  assert(mask2 >> 10 == 0x03FF as bv32);
+  assert(b2 <= 0x03FF as bv32);
+  part1 := b1 as addr;    
+  part2 := b2 as addr;    
 }
 
 // internal functions
-method tryInsertMapping(vpn: addr, pfn: addr) returns (err: nat)
+method tryInsertMapping(vpnPart1: addr, vpnPart2: addr, pfn: addr) returns (err: nat)
 requires pageTableInvariant()
+requires 0 <= vpnPart1 < numVpnParts
+requires 0 <= vpnPart2 < numVpnParts
 ensures 0 <= err <= 1
-modifies root{
-  assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int)));
+ensures pageTableInvariant()
+ensures err == 0 ==> root[vpnPart1] != Nil && root[vpnPart1].arr[vpnPart2] == pfn
+modifies root
+modifies if root[vpnPart1].Some? then {root[vpnPart1].arr} else {}
+{
+assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int)));
 
-  var part1 := maskVpn(vpn, 0);
-
-  var entry1 := root[part1];
+  var entry1 := root[vpnPart1];
 
   if (entry1 == Nil){
     var a := new addr[numVpnParts];
     entry1 := Some(a);
-    root[part1] := entry1;
+    root[vpnPart1] := entry1;
     assert(entry1.arr.Length == numVpnParts as int);
+    entry1.arr[0] := 1;
   }
 
 
-  var part2 := maskVpn(vpn, 1);
-
   assert entry1.Some?;
 
-  var entry2 := entry1.arr[part2] by {
+  var entry2: addr := entry1.arr[vpnPart2] by {
     assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int)));
-    assert(0 <= part2 < numVpnParts);
+    assert(0 <= vpnPart2 < numVpnParts);
   }
   
   if (entry2 == 0){
     entry2 := pfn;
+    entry1.arr[vpnPart2] := entry2;
     return 0;
   } else if (entry2 == pfn){
     return 0;
   } else{
     // vaddr is alr in use
+    // TODO use a free entry
     return 1;
   }
 }
 
-method tryGetMapping(vpn: addr) returns (pfn: addr)
-  requires 0 <= vpn < numVpns
-  requires pageTableInvariant(){
-  var part1 := maskVpn(vpn, 0);
+method tryGetMapping(vpnPart1: addr, vpnPart2: addr) returns (pfn: addr)
+  requires 0 <= vpnPart1 < numVpnParts
+  requires 0 <= vpnPart2 < numVpnParts
+  requires pageTableInvariant()
+ensures pageTableInvariant()
+ensures root[vpnPart1].Some? ==> pfn == root[vpnPart1].arr[vpnPart2]
+{
 
-  var entry1 := root[part1];
+  var entry1 := root[vpnPart1];
 
   if (entry1 == Nil){
     return 0;
   }
 
-  var part2 := maskVpn(vpn, 1);
-
   assert entry1.Some?;
-  var entry2 := entry1.arr[part2];
+  var entry2 := entry1.arr[vpnPart2];
   
   return entry2;
 }
@@ -148,10 +159,10 @@ requires false{
 
 method allocate(vaddr: addr, size: addr) returns (err: nat) 
 requires pageTableInvariant()
+ensures pageTableInvariant()
 modifies root
+modifies set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr
 modifies this{
-  var vpn := getVpn(vaddr);
-
   var pagesNeeded := 1;
 
   var freePages := 0xF_FFFF - currPfn by {
@@ -162,7 +173,10 @@ modifies this{
     return 1;
   }
   
-  err := tryInsertMapping(vpn, currPfn);
+  var vpn := getVpn(vaddr);
+
+  var part1, part2 := maskVpn(vpn);
+  err := tryInsertMapping(part1, part2, currPfn);
 }
 
 method translate(vaddr: addr) requires false{
