@@ -24,6 +24,7 @@ class PageTable{
   predicate pageTableInvariant()
   reads this
   reads root
+  reads tlbValid, tlbKeys, tlbVals
   {0 <= currPfn < numVpns &&
   root.Length == numVpns as int &&
   // TLB arrays are well-formed
@@ -41,6 +42,7 @@ class PageTable{
   constructor() 
   ensures pageTableInvariant()
   ensures fresh(root)
+  ensures forall j: nat :: 0 <= j < tlbSize ==> tlbValid[j] == false
   {
 
     root := new secondLevelPtr[numVpns];
@@ -69,9 +71,11 @@ class PageTable{
     for i := 0 to tlbSize as int
       invariant 0 <= i <= tlbSize as int
       invariant fresh(tlbKeys) && fresh(tlbVals) && fresh(tlbValid)
+      invariant forall j: nat :: 0 <= j < i ==> !tlbValid[j]    
     {
       tlbValid[i] := false;
     }
+    assert forall j: nat :: 0 <= j < tlbSize ==> !tlbValid[j];
     //assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil)));
     // completely null
 
@@ -192,9 +196,11 @@ class PageTable{
   method allocate(vaddr: addr, size: addr) returns (err: nat) 
   requires pageTableInvariant()
   ensures pageTableInvariant()
+  modifies this
   modifies root
   modifies set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr
-  modifies this{
+  // modifies this
+  {
     var pagesNeeded := 1;
 
     var freePages := 0xF_FFFF - currPfn by {
@@ -255,7 +261,7 @@ class PageTable{
   method flushTLB()
     requires pageTableInvariant()
     ensures pageTableInvariant()
-    modifies tlbValid, tlbNext
+    modifies tlbValid, this
   {
     for i := 0 to tlbSize as int
       invariant 0 <= i <= tlbSize as int
