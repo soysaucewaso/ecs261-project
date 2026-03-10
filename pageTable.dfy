@@ -40,7 +40,7 @@ reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts &
 
 // all pageTables have exactly `numVpns` entries
 (forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))) &&
-(currPfn != 0 ==> (forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j : nat :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn))))
+(forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j : nat :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn)))
 
   }
 
@@ -73,6 +73,7 @@ reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts &
     tlbNext := 0;
     for i := 0 to tlbSize as int
       invariant 0 <= i <= tlbSize as int
+      invariant root.Length == numVpnParts as int
       invariant fresh(tlbKeys) && fresh(tlbVals) && fresh(tlbValid)
       invariant forall j: nat :: 0 <= j < i ==> !tlbValid[j]    
     {
@@ -300,11 +301,13 @@ ensures currPfn != 0 ==> 0 <= pfn < currPfn
     var vpn := getVpn(vaddr);
 
     var part1, part2 := maskVpn(vpn);
-    err := tryInsertMapping(part1, part2, currPfn);
+    currPfn := currPfn + 1;
+    
+    err := tryInsertMapping(part1, part2, currPfn - 1);
     if (err == 0) {
       // warm the TLB with the new mapping
       // assumes err code 0 means no error
-      tlbInsert(vpn, currPfn);
+      tlbInsert(vpn, currPfn - 1);
     }
   }
 
