@@ -2,7 +2,7 @@ newtype int32 = x: int | 0 <= x < 0x1_0000_0000
 newtype addr = int32
 type addrArray = array<addr>
 
-datatype secondLevelPtr = Nil | Some(arr: addrArray) 
+datatype secondLevelPtr = Nil | Some(arr: addrArray)
 
 class PageTable{
 
@@ -22,46 +22,44 @@ class PageTable{
   var currPfn: addr
 
   predicate pageTableInvariant()
-  reads this
-  reads root
-  reads tlbValid, tlbKeys, tlbVals
-reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr else {}
+    reads this
+    reads root
+    reads tlbValid, tlbKeys, tlbVals
+    reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr else {}
   {0 < currPfn < numVpns &&
-  root.Length == numVpnParts as int &&
-  // TLB arrays are well-formed
-  tlbKeys.Length == tlbSize &&
-  tlbVals.Length == tlbSize &&
-  tlbValid.Length == tlbSize &&
-  0 <= tlbNext < tlbSize &&
-  // when valid, TLB entries carry valid vpn/pfn ranges
-  (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < numVpns))) &&
-  // all pageTables have exactly `numVpns` entries
-  (forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))) &&
+   root.Length == numVpnParts as int &&
+   // TLB arrays are well-formed
+   tlbKeys.Length == tlbSize &&
+   tlbVals.Length == tlbSize &&
+   tlbValid.Length == tlbSize &&
+   0 <= tlbNext < tlbSize &&
+   // when valid, TLB entries carry valid vpn/pfn ranges
+   (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < numVpns))) &&
 
-// all pageTables have exactly `numVpns` entries
-(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))) &&
-(forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j : nat :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn)))
+   // all pageTables have exactly `numVpns` entries
+   (forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))) &&
+   (forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j : nat :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn)))
 
   }
 
-  constructor() 
-  ensures pageTableInvariant()
-  ensures fresh(root)
-  ensures forall j: nat :: 0 <= j < tlbSize ==> tlbValid[j] == false
+  constructor()
+    ensures pageTableInvariant()
+    ensures fresh(root)
+    ensures forall j: nat :: 0 <= j < tlbSize ==> tlbValid[j] == false
   {
 
-  root := new secondLevelPtr[numVpnParts];
+    root := new secondLevelPtr[numVpnParts];
 
     new;
 
-  assert(root.Length == numVpnParts as int);
-  for i := 0 to numVpnParts as int
-    invariant root.Length == numVpnParts as int
-    invariant 0 <= i <= root.Length
-    invariant forall j: nat :: 0 <= j < i ==> root[j] == Nil
-    invariant fresh(root){
-    root[i] := Nil by {
-      assert(root.Length == numVpnParts as int);
+    assert(root.Length == numVpnParts as int);
+    for i := 0 to numVpnParts as int
+      invariant root.Length == numVpnParts as int
+      invariant 0 <= i <= root.Length
+      invariant forall j: nat :: 0 <= j < i ==> root[j] == Nil
+      invariant fresh(root){
+      root[i] := Nil by {
+        assert(root.Length == numVpnParts as int);
 
       }
     }
@@ -75,7 +73,7 @@ reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts &
       invariant 0 <= i <= tlbSize as int
       invariant root.Length == numVpnParts as int
       invariant fresh(tlbKeys) && fresh(tlbVals) && fresh(tlbValid)
-      invariant forall j: nat :: 0 <= j < i ==> !tlbValid[j]    
+      invariant forall j: nat :: 0 <= j < i ==> !tlbValid[j]
     {
       tlbValid[i] := false;
     }
@@ -86,72 +84,71 @@ reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts &
     assert(currPfn == 1 as addr);
 
   }
-  /*lemma insertThenGet(vpnPart1: addr, vpnPart2: addr, pfn: addr)
-  requires 0 <= vpnPart1 < numVpnParts
-  requires 0 <= vpnPart2 < numVpnParts{
+  lemma insertThenGet(vpnPart1: addr, vpnPart2: addr, pfn: addr)
+    requires 0 <= vpnPart1 < numVpnParts
+    requires 0 <= vpnPart2 < numVpnParts{
     var err := tryInsertMapping(vpnPart1, vpnPart2, pfn);
-=======
-}*/
-lemma bvLess(a: nat, b: nat)
-requires 0 <= a <= 0xFFFF_FFFF
-requires 0 <= b <= 0xFFFF_FFFF
-requires a < b
-//ensures a as bv32 < b as bv32
-{
-}
+  }
+  lemma bvLess(a: nat, b: nat)
+    requires 0 <= a <= 0xFFFF_FFFF
+    requires 0 <= b <= 0xFFFF_FFFF
+    requires a < b
+    //ensures a as bv32 < b as bv32
+  {
+  }
 
-lemma bvLessAddr(a: addr, b: addr)
-requires 0 <= a <= 0xFFFF_FFFF
-requires 0 <= b <= 0xFFFF_FFFF
-requires a < b
-//ensures a as bv32 < b as bv32
-{
-  var aNat := a as nat;
-  var bNat := b as nat;
-  //assert(aNat as bv32 < bNat as bv32) by {
+  lemma bvLessAddr(a: addr, b: addr)
+    requires 0 <= a <= 0xFFFF_FFFF
+    requires 0 <= b <= 0xFFFF_FFFF
+    requires a < b
+    //ensures a as bv32 < b as bv32
+  {
+    var aNat := a as nat;
+    var bNat := b as nat;
+    //assert(aNat as bv32 < bNat as bv32) by {
     //bvLess(aNat, bNat);
-  //}
-}
+    //}
+  }
 
-method buildAddr(pfn: addr, offset: addr) 
-returns (a: addr)
-requires 0 <= pfn < numVpns
-requires 0 <= offset < numOffsets
-//ensures (a as bv32 & 0xFFF) == offset as bv32
-//ensures (a as bv32 >> 12) == pfn as bv32
-{
-  var mask1: bv32 := 0xF_FFFF;
-  var b1 := (pfn as bv32 & mask1);
-  //assert(b1 == pfn as bv32);
-  assert(b1 <= mask1);
-  //assert(b1 < 0x1 as bv32 << 20);
-  //assert(b1 <= 0xF_FFFF as bv32);
+  method buildAddr(pfn: addr, offset: addr)
+    returns (a: addr)
+    requires 0 <= pfn < numVpns
+    requires 0 <= offset < numOffsets
+    //ensures (a as bv32 & 0xFFF) == offset as bv32
+    //ensures (a as bv32 >> 12) == pfn as bv32
+  {
+    var mask1: bv32 := 0xF_FFFF;
+    var b1 := (pfn as bv32 & mask1);
+    //assert(b1 == pfn as bv32);
+    assert(b1 <= mask1);
+    //assert(b1 < 0x1 as bv32 << 20);
+    //assert(b1 <= 0xF_FFFF as bv32);
 
-  //assert(pfnBv < numVpns as bv32);
-  //assert(0x10_0000 == 1 as bv32 << 20 as bv6);
-  //assert(pfnBv < numVpns as bv21);
-  var shifted := (b1 << 12);
-  //assert(shifted >> 12 == b1);
-  //assert(shifted >> 32 == 0);
-  //assert(shifted >> 12 == pfnBv) by {
-  //}
-  //assert(shifted & 0xFFF == 0);
-  var b := (shifted | offset as bv32);
-  
-  //assert(b >> 12 == pfnBv) by {
+    //assert(pfnBv < numVpns as bv32);
+    //assert(0x10_0000 == 1 as bv32 << 20 as bv6);
+    //assert(pfnBv < numVpns as bv21);
+    var shifted := (b1 << 12);
+    //assert(shifted >> 12 == b1);
+    //assert(shifted >> 32 == 0);
+    //assert(shifted >> 12 == pfnBv) by {
+    //}
+    //assert(shifted & 0xFFF == 0);
+    var b := (shifted | offset as bv32);
+
+    //assert(b >> 12 == pfnBv) by {
     //assert(offset as bv32 >> 12 == 0) by {
-      //assert(0 <= offset < 0xFFF);
-      //assert(0xFFF as bv32 == )
-  //}
-  //assert(b & 0x0FFF == offset as bv32);
-  return (b as addr);
-}
-function getOffset(a: addr): addr {
-  (a as bv32 & 0x0FFF as bv32) as addr
-}
+    //assert(0 <= offset < 0xFFF);
+    //assert(0xFFF as bv32 == )
+    //}
+    //assert(b & 0x0FFF == offset as bv32);
+    return (b as addr);
+  }
+  function getOffset(a: addr): addr {
+    (a as bv32 & 0x0FFF as bv32) as addr
+  }
 
   method getVpn(vaddr: addr) returns(vpn: addr)
-  ensures 0 <= vpn < numVpns{
+    ensures 0 <= vpn < numVpns{
     var mask := 0xFFC0_0000;
     var bv := (vaddr as bv32 & mask as bv32);
     bv := bv >> 22;
@@ -159,9 +156,9 @@ function getOffset(a: addr): addr {
   }
 
   method maskVpn(vpn: addr) returns(part1: addr, part2: addr)
-  requires 0 <= vpn < numVpns
-  ensures 0 <= part1 < numVpnParts
-  ensures 0 <= part2 < numVpnParts
+    requires 0 <= vpn < numVpns
+    ensures 0 <= part1 < numVpnParts
+    ensures 0 <= part2 < numVpnParts
   {
     // splitting a page number into two indexes.
     var mask1: bv32 := 0x03FF;
@@ -177,95 +174,95 @@ function getOffset(a: addr): addr {
     assert(b2 <= mask2 >> 10);
     assert(mask2 >> 10 == 0x03FF as bv32);
     assert(b2 <= 0x03FF as bv32);
-    part1 := b1 as addr;    
-    part2 := b2 as addr;    
+    part1 := b1 as addr;
+    part2 := b2 as addr;
 
   }
 
-// internal functions
-method tryInsertMapping(vpnPart1: addr, vpnPart2: addr, pfn: addr) returns (err: nat)
-requires pageTableInvariant()
-requires 0 <= vpnPart1 < numVpnParts
-requires 0 <= vpnPart2 < numVpnParts
-requires pfn < currPfn
-ensures 0 <= err <= 1
-ensures pageTableInvariant()
-ensures err == 0 ==> root[vpnPart1].Some? && root[vpnPart1].arr[vpnPart2] == pfn
-ensures (err != 0 && old(root[vpnPart1].Some?)) ==> root[vpnPart1].Some? && root[vpnPart1].arr == old(root[vpnPart1].arr)
-modifies root
-modifies if root[vpnPart1].Some? then {root[vpnPart1].arr} else {}
-{
-assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int)));
-assert(forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn)));
-
-  var entry1 := root[vpnPart1];
-
-  if (entry1 == Nil){
-assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int)));
-    var a := new addr[numVpnParts];
-    for i := 0 to numVpnParts as int
-      invariant a.Length == numVpnParts as int
-      invariant 0 <= i <= a.Length
-      invariant forall j: nat :: 0 <= j < i ==> a[j] == 0 as addr
-      // these invariants are irrelevant to this loop but are necessary to prove later assertions
-      invariant forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))
-      invariant forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn))
-      {
-      a[i] := 0 as addr by {
-        assert(a.Length == numVpnParts as int);
-
-      }
-    }
-    assert(forall i :: 0 <= i < a.Length ==> a[i] == 0 as addr);
-
-    entry1 := Some(a);
-    root[vpnPart1] := entry1;
-    assert(entry1.arr.Length == numVpnParts as int);
-  }
-
-
-  assert entry1.Some?;
-
-  var entry2: addr := entry1.arr[vpnPart2] by {
+  // internal functions
+  method tryInsertMapping(vpnPart1: addr, vpnPart2: addr, pfn: addr) returns (err: nat)
+    requires pageTableInvariant()
+    requires 0 <= vpnPart1 < numVpnParts
+    requires 0 <= vpnPart2 < numVpnParts
+    requires pfn < currPfn
+    ensures 0 <= err <= 1
+    ensures pageTableInvariant()
+    ensures err == 0 ==> root[vpnPart1].Some? && root[vpnPart1].arr[vpnPart2] == pfn
+    ensures (err != 0 && old(root[vpnPart1].Some?)) ==> root[vpnPart1].Some?    && root[vpnPart1].arr == old(root[vpnPart1].arr)
+    modifies root
+    modifies if root[vpnPart1].Some? then {root[vpnPart1].arr} else {}
+  {
     assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int)));
-    assert(0 <= vpnPart2 < numVpnParts);
-  }
-  
-  if (entry2 == 0){
-    entry2 := pfn;
-    entry1.arr[vpnPart2] := entry2;
-    assert(entry2 < currPfn);
-  }
-  
+    assert(forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn)));
 
-  if (entry2 == pfn){
-    // important assertions
-    var getPfn := tryGetMapping(vpnPart1, vpnPart2) by {
-      assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))) ;
-      assert(forall j :: 0 <= j < numVpnParts ==> root[vpnPart1].arr[j] < currPfn) by {
-        assert(root[vpnPart1].Some? && root[vpnPart1].arr[vpnPart2] == pfn);
-        assert(old(root[vpnPart1].Some?) ==> forall j :: 0 <= j < numVpnParts && j != vpnPart2 ==> root[vpnPart1].arr[j] == old(root[vpnPart1].arr[j]));
-        assert(old(root[vpnPart1].Some?) ==> forall j :: 0 <= j < numVpnParts && j != vpnPart2 ==> root[vpnPart1].arr[j] < currPfn);
-        assert(!old(root[vpnPart1].Some?) ==> forall j :: 0 <= j < numVpnParts && j != vpnPart2 ==> root[vpnPart1].arr[j] == 0);
+    var entry1 := root[vpnPart1];
+
+    if (entry1 == Nil){
+      assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int)));
+      var a := new addr[numVpnParts];
+      for i := 0 to numVpnParts as int
+        invariant a.Length == numVpnParts as int
+        invariant 0 <= i <= a.Length
+        invariant forall j: nat :: 0 <= j < i ==> a[j] == 0 as addr
+        // these invariants are irrelevant to this loop but are necessary to prove later assertions
+        invariant forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))
+        invariant forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn))
+      {
+        a[i] := 0 as addr by {
+          assert(a.Length == numVpnParts as int);
+
+        }
       }
-      assert(forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn)));
+      assert(forall i :: 0 <= i < a.Length ==> a[i] == 0 as addr);
+
+      entry1 := Some(a);
+      root[vpnPart1] := entry1;
+      assert(entry1.arr.Length == numVpnParts as int);
     }
-    assert(pfn == getPfn);
-    return 0;
-  } else{
-    // vaddr is alr in use
-    // TODO use a free entry
-    return 1;
+
+
+    assert entry1.Some?;
+
+    var entry2: addr := entry1.arr[vpnPart2] by {
+      assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int)));
+      assert(0 <= vpnPart2 < numVpnParts);
+    }
+
+    if (entry2 == 0){
+      entry2 := pfn;
+      entry1.arr[vpnPart2] := entry2;
+      assert(entry2 < currPfn);
+    }
+
+
+    if (entry2 == pfn){
+      // important assertions
+      var getPfn := tryGetMapping(vpnPart1, vpnPart2) by {
+        assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))) ;
+        assert(forall j :: 0 <= j < numVpnParts ==> root[vpnPart1].arr[j] < currPfn) by {
+          assert(root[vpnPart1].Some? && root[vpnPart1].arr[vpnPart2] == pfn);
+          assert(old(root[vpnPart1].Some?) ==> forall j :: 0 <= j < numVpnParts && j != vpnPart2 ==> root[vpnPart1].arr[j] == old(root[vpnPart1].arr[j]));
+          assert(old(root[vpnPart1].Some?) ==> forall j :: 0 <= j < numVpnParts && j != vpnPart2 ==> root[vpnPart1].arr[j] < currPfn);
+          assert(!old(root[vpnPart1].Some?) ==> forall j :: 0 <= j < numVpnParts && j != vpnPart2 ==> root[vpnPart1].arr[j] == 0);
+        }
+        assert(forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn)));
+      }
+      assert(pfn == getPfn);
+      return 0;
+    } else{
+      // vaddr is alr in use
+      // TODO use a free entry
+      return 1;
+    }
   }
-}
-method tryGetMapping(vpnPart1: addr, vpnPart2: addr) returns (pfn: addr)
-  requires 0 <= vpnPart1 < numVpnParts
-  requires 0 <= vpnPart2 < numVpnParts
-  requires pageTableInvariant()
-ensures pageTableInvariant()
-ensures root[vpnPart1].Some? ==> pfn == root[vpnPart1].arr[vpnPart2]
-ensures currPfn != 0 ==> 0 <= pfn < currPfn
-{
+  method tryGetMapping(vpnPart1: addr, vpnPart2: addr) returns (pfn: addr)
+    requires 0 <= vpnPart1 < numVpnParts
+    requires 0 <= vpnPart2 < numVpnParts
+    requires pageTableInvariant()
+    ensures pageTableInvariant()
+    ensures root[vpnPart1].Some? ==> pfn == root[vpnPart1].arr[vpnPart2]
+    ensures currPfn != 0 ==> 0 <= pfn < currPfn
+  {
 
     var entry1 := root[vpnPart1];
 
@@ -275,18 +272,18 @@ ensures currPfn != 0 ==> 0 <= pfn < currPfn
 
     assert entry1.Some?;
     var entry2 := entry1.arr[vpnPart2];
-    
+
     return entry2;
   }
 
 
-  method allocate(vaddr: addr, size: addr) returns (err: nat) 
-  requires pageTableInvariant()
-  ensures pageTableInvariant()
-  modifies this
-  modifies root
-  modifies set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr
-  // modifies this
+  method allocate(vaddr: addr, size: addr) returns (err: nat)
+    requires pageTableInvariant()
+    ensures pageTableInvariant()
+    modifies this
+    modifies root
+    modifies set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr
+    // modifies this
   {
     var pagesNeeded := 1;
 
@@ -297,12 +294,12 @@ ensures currPfn != 0 ==> 0 <= pfn < currPfn
       // out of free pages
       return 1;
     }
-    
+
     var vpn := getVpn(vaddr);
 
     var part1, part2 := maskVpn(vpn);
     currPfn := currPfn + 1;
-    
+
     err := tryInsertMapping(part1, part2, currPfn - 1);
     if (err == 0) {
       // warm the TLB with the new mapping
@@ -364,9 +361,9 @@ ensures currPfn != 0 ==> 0 <= pfn < currPfn
   method translate(vaddr: addr) returns (paddr: addr, ok: bool)
     requires pageTableInvariant()
     ensures pageTableInvariant()
-modifies root
-modifies set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr
-modifies this
+    modifies root
+    modifies set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr
+    modifies this
   {
     var vpn := getVpn(vaddr);
     var pfn, hit := tlbLookup(vpn);
