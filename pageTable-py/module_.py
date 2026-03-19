@@ -75,6 +75,28 @@ class PageTable:
     def tlbInvariant(self):
         return (((((self.tlbKeys).length(0)) == ((self).tlbSize)) and (((self.tlbVals).length(0)) == ((self).tlbSize))) and (((self.tlbValid).length(0)) == ((self).tlbSize))) and (((0) <= (self.tlbNext)) and ((self.tlbNext) < ((self).tlbSize)))
 
+    def pageTableUnique(self):
+        def lambda0_(forall_var_0_):
+            def lambda1_(forall_var_1_):
+                def lambda2_(forall_var_2_):
+                    def lambda3_(forall_var_3_):
+                        d_3_l_: int = forall_var_3_
+                        return not ((((((((((0) <= (d_0_i_)) and ((d_0_i_) < ((self.root).length(0)))) and (((self.root)[d_0_i_]).is_Some)) and (((0) <= (d_1_j_)) and ((d_1_j_) < ((((self.root)[d_0_i_]).arr).length(0))))) and (((((self.root)[d_0_i_]).arr)[d_1_j_]) != (0))) and (((0) <= (d_2_k_)) and ((d_2_k_) < ((self.root).length(0))))) and (((self.root)[d_2_k_]).is_Some)) and (((0) <= (d_3_l_)) and ((d_3_l_) < ((((self.root)[d_2_k_]).arr).length(0))))) and (((d_0_i_) != (d_2_k_)) or ((d_1_j_) != (d_3_l_)))) or (((((self.root)[d_0_i_]).arr)[d_1_j_]) != ((((self.root)[d_2_k_]).arr)[d_3_l_]))
+
+                    d_2_k_: int = forall_var_2_
+                    return _dafny.quantifier(_dafny.IntegerRange(0, (((self.root)[d_2_k_]).arr).length(0)), True, lambda3_)
+
+                d_1_j_: int = forall_var_1_
+                return _dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda2_)
+
+            d_0_i_: int = forall_var_0_
+            if System_.nat._Is(d_0_i_):
+                return _dafny.quantifier(_dafny.IntegerRange(0, (((self.root)[d_0_i_]).arr).length(0)), True, lambda1_)
+            elif True:
+                return True
+
+        return (((self.root).length(0)) == ((self).numVpnParts)) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda0_))
+
     def pageInvariant(self):
         def lambda0_(forall_var_0_):
             d_0_i_: int = forall_var_0_
@@ -97,7 +119,7 @@ class PageTable:
             elif True:
                 return True
 
-        return (((((0) < (self.currPfn)) and ((self.currPfn) < ((self).numVpns))) and (((self.root).length(0)) == ((self).numVpnParts))) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda0_))) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda1_))
+        return ((((((0) < (self.currPfn)) and ((self.currPfn) < ((self).numVpns))) and (((self.root).length(0)) == ((self).numVpnParts))) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda0_))) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda1_))) and ((self).pageTableUnique())
 
     def pageTableInvariant(self):
         def lambda0_(forall_var_0_):
@@ -110,24 +132,34 @@ class PageTable:
         return (((self).tlbInvariant()) and ((self).pageInvariant())) and (_dafny.quantifier(_dafny.IntegerRange(0, (self).tlbSize), True, lambda0_))
 
     def ctor__(self):
+        pass
+        pass
+
+    def init(self):
         nw0_ = _dafny.Array(secondLevelPtr.default()(), (self).numVpnParts)
         (self).root = nw0_
         hi0_ = (self).numVpnParts
         for d_0_i_ in range(0, hi0_):
             arr0_ = self.root
             arr0_[(d_0_i_)] = secondLevelPtr_Nil()
+        d_1_keys_: _dafny.Array
         nw1_ = _dafny.Array(int(0), (self).tlbSize)
-        (self).tlbKeys = nw1_
+        d_1_keys_ = nw1_
+        d_2_vals_: _dafny.Array
         nw2_ = _dafny.Array(int(0), (self).tlbSize)
-        (self).tlbVals = nw2_
+        d_2_vals_ = nw2_
+        d_3_valid_: _dafny.Array
         nw3_ = _dafny.Array(False, (self).tlbSize)
-        (self).tlbValid = nw3_
+        d_3_valid_ = nw3_
+        (self).tlbKeys = d_1_keys_
+        (self).tlbVals = d_2_vals_
+        (self).tlbValid = d_3_valid_
         (self).tlbNext = 0
         (self).currPfn = 1
         hi1_ = (self).tlbSize
-        for d_1_i_ in range(0, hi1_):
+        for d_4_i_ in range(0, hi1_):
             arr1_ = self.tlbValid
-            arr1_[(d_1_i_)] = False
+            arr1_[(d_4_i_)] = False
 
     def buildAddr(self, pfn, offset):
         a: int = int(0)
@@ -324,7 +356,6 @@ class PageTable:
                 paddr = 0
                 ok = False
                 return paddr, ok
-        (self).tlbInsert(d_0_vpn_, d_1_pfn_)
         d_8_offset_: int
         d_8_offset_ = (self).getOffset(vaddr)
         out8_: int
