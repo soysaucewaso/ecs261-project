@@ -21,25 +21,40 @@ class PageTable{
   const numVpnParts: addr := 0x0400
   var currPfn: addr
 
+  predicate tlbInvariant()
+    reads this
+    reads tlbValid, tlbKeys, tlbVals
+    {
+   tlbKeys.Length == tlbSize &&
+   tlbVals.Length == tlbSize &&
+   tlbValid.Length == tlbSize &&
+   0 <= tlbNext < tlbSize
+    }
+  
+  predicate pageInvariant()
+    reads this 
+    reads root
+    reads tlbValid, tlbKeys, tlbVals
+    reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr else {}
+    {
+    0 < currPfn < numVpns &&
+   root.Length == numVpnParts as int &&
+   // all pageTables have exactly `numVpns` entries
+   (forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))) &&
+   (forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j : nat :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn)))
+
+
+    }
+
   predicate pageTableInvariant()
     reads this
     reads root
     reads tlbValid, tlbKeys, tlbVals
     reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr else {}
-  {0 < currPfn < numVpns &&
-   root.Length == numVpnParts as int &&
-   // TLB arrays are well-formed
-   tlbKeys.Length == tlbSize &&
-   tlbVals.Length == tlbSize &&
-   tlbValid.Length == tlbSize &&
-   0 <= tlbNext < tlbSize &&
+  {
+   tlbInvariant() && pageInvariant() &&
    // when valid, TLB entries carry valid vpn/pfn ranges
-   (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < numVpns))) &&
-
-   // all pageTables have exactly `numVpns` entries
-   (forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))) &&
-   (forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j : nat :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn)))
-
+   (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < currPfn))) 
   }
 
   constructor()
@@ -57,7 +72,8 @@ class PageTable{
       invariant root.Length == numVpnParts as int
       invariant 0 <= i <= root.Length
       invariant forall j: nat :: 0 <= j < i ==> root[j] == Nil
-      invariant fresh(root){
+      invariant fresh(root)
+      {
       root[i] := Nil by {
         assert(root.Length == numVpnParts as int);
 
@@ -69,26 +85,32 @@ class PageTable{
     tlbVals := new addr[tlbSize];
     tlbValid := new bool[tlbSize];
     tlbNext := 0;
+    currPfn := 1;
+    assert(currPfn == 1 as addr);
+    //assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil)));
+    // completely null
     for i := 0 to tlbSize as int
       invariant 0 <= i <= tlbSize as int
       invariant root.Length == numVpnParts as int
       invariant fresh(tlbKeys) && fresh(tlbVals) && fresh(tlbValid)
-      invariant forall j: nat :: 0 <= j < i ==> !tlbValid[j]
+      invariant fresh(root)
+      invariant forall j: nat :: 0 <= j < i ==> j < tlbValid.Length && !tlbValid[j]
+      invariant currPfn == 1 as addr
+      // can prove everything except properties about tlbValid
+      invariant pageInvariant() && tlbInvariant()
     {
       tlbValid[i] := false;
     }
     assert forall j: nat :: 0 <= j < tlbSize ==> !tlbValid[j];
-    //assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil)));
-    // completely null
-    currPfn := 1;
     assert(currPfn == 1 as addr);
 
   }
-  lemma insertThenGet(vpnPart1: addr, vpnPart2: addr, pfn: addr)
+  /*lemma insertThenGet(vpnPart1: addr, vpnPart2: addr, pfn: addr)
     requires 0 <= vpnPart1 < numVpnParts
     requires 0 <= vpnPart2 < numVpnParts{
     var err := tryInsertMapping(vpnPart1, vpnPart2, pfn);
   }
+  */
   lemma bvLess(a: nat, b: nat)
     requires 0 <= a <= 0xFFFF_FFFF
     requires 0 <= b <= 0xFFFF_FFFF
@@ -280,9 +302,13 @@ class PageTable{
   method allocate(vaddr: addr, size: addr) returns (err: nat)
     requires pageTableInvariant()
     ensures pageTableInvariant()
+    ensures tlbKeys == old(tlbKeys)
+    ensures tlbVals == old(tlbVals)
+    ensures tlbValid == old(tlbValid)
     modifies this
     modifies root
     modifies set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr
+    modifies tlbKeys, tlbVals, tlbValid, this
     // modifies this
   {
     var pagesNeeded := 1;
@@ -310,7 +336,9 @@ class PageTable{
 
   method tlbLookup(vpn: addr) returns (pfn: addr, hit: bool)
     requires pageTableInvariant()
+    requires vpn < numVpns
     ensures pageTableInvariant()
+    ensures pfn < currPfn
   {
     var i := 0;
     while i < tlbSize
@@ -330,13 +358,19 @@ class PageTable{
 
   method tlbInsert(vpn: addr, pfn: addr)
     requires pageTableInvariant()
+    requires vpn < numVpns
+    requires pfn < currPfn
     ensures pageTableInvariant()
+    ensures tlbKeys == old(tlbKeys)
+    ensures tlbVals == old(tlbVals)
+    ensures tlbValid == old(tlbValid)
     modifies tlbKeys, tlbVals, tlbValid, this
   {
     var idx := tlbNext as int;
     tlbKeys[idx] := vpn;
     tlbVals[idx] := pfn;
     tlbValid[idx] := true;
+
     if tlbNext + 1 < tlbSize as nat {
       tlbNext := tlbNext + 1;
     } else {
@@ -351,7 +385,10 @@ class PageTable{
   {
     for i := 0 to tlbSize as int
       invariant 0 <= i <= tlbSize as int
+      invariant forall j :: 0 <= j < i ==> !tlbValid[j]
+      invariant forall j :: 0 <= j < tlbSize ==> tlbValid[j] ==> (tlbKeys[j] < numVpns && tlbVals[j] < numVpns)
       invariant pageTableInvariant()
+      modifies tlbValid
     {
       tlbValid[i] := false;
     }
@@ -360,25 +397,28 @@ class PageTable{
 
   method translate(vaddr: addr) returns (paddr: addr, ok: bool)
     requires pageTableInvariant()
-    ensures pageTableInvariant()
+    //ensures pageTableInvariant()
     modifies root
     modifies set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr
-    modifies this
+    modifies tlbKeys, tlbVals, tlbValid, this
   {
     var vpn := getVpn(vaddr);
     var pfn, hit := tlbLookup(vpn);
+    
     if (hit) {
-      var offBits := (vaddr as bv32 & pageSize as bv32);
-      var phys := ((pfn as bv32) << offset) | offBits;
+      var offset := getOffset(vaddr);
+      var phys := buildAddr(pfn, offset);
       paddr := phys as addr;
       ok := true;
       return;
-    }
+    } 
+    
 
     var part1, part2 := maskVpn(vpn);
-    currPfn := currPfn + 1;
     pfn := tryGetMapping(part1, part2);
+
     if (pfn == 0){
+      
       var err := allocate(vaddr, 1);
       if (err != 0) {
         paddr := 0;
@@ -388,11 +428,13 @@ class PageTable{
 
     }
     // insert into TLB on a miss
+    assert(tlbKeys == old(tlbKeys));
+    assert(tlbVals == old(tlbVals));
+    assert(tlbValid == old(tlbValid));
     tlbInsert(vpn, pfn);
     var offset := getOffset(vaddr);
 
     paddr := buildAddr(pfn, offset);
-
     ok := true;
   }
 }
