@@ -83,12 +83,18 @@ class PageTable{
     //(forall i, j: nat :: 0 <= i < tlbSize as int && 0 <= j < tlbSize as int && i != j && tlbValid[i] && tlbValid[j] ==> (tlbKeys[i] != tlbKeys[j])) &&
     (forall i, j: nat :: 0 <= i < tlbSize as int && 0 <= j < tlbSize as int && i != j && tlbValid[i] && tlbValid[j] ==> (tlbVals[i] != tlbVals[j]))
   }
-  predicate valExists(val: addr){
+  predicate valExists(val: addr)
+  requires false
+    reads this
+    reads root
+    reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr else {}
+  {
      (exists j, k: nat :: 0 <= j < numVpnParts && 0 <= k < numVpnParts as int && root[j].Some? && root[j].arr[k] == val)
   }
 
 
   predicate tlbGrounded()
+  requires false
     reads this
     reads tlbValid, tlbKeys, tlbVals
     reads root
@@ -109,8 +115,8 @@ class PageTable{
     tlbInvariant() && pageInvariant() &&
     // when valid, TLB entries carry valid vpn/pfn ranges
     (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && 0 < tlbVals[i] < currPfn))) &&
-    tlbUnique() &&
-    tlbGrounded()
+    tlbUnique() 
+    //tlbGrounded()
   }
 
   constructor()
@@ -273,8 +279,8 @@ class PageTable{
     //ensures pageTableInvariant()
     ensures tlbInvariant() && pageInvariant() &&
     // when valid, TLB entries carry valid vpn/pfn ranges
-    (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && 0 < tlbVals[i] < currPfn)))
-    //tlbUnique()
+    (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && 0 < tlbVals[i] < currPfn))) &&
+    tlbUnique()
 
     ensures err == 0 ==> root[vpnPart1].Some? && root[vpnPart1].arr.Length == numVpnParts as nat && root[vpnPart1].arr[vpnPart2] == pfn
     // everything except the vpn is unmodified
@@ -304,7 +310,7 @@ class PageTable{
         invariant forall i, j : nat :: (0 <= i < root.Length && root[i].Some? && 0 <= j < root[i].arr.Length) ==> (root[i].arr.Length == numVpnParts as nat) ==> root[i].arr[j] == old(root[i].arr[j])
         invariant pageTableUnique()
         invariant tlbUnique()
-        invariant tlbGrounded()
+        //invariant tlbGrounded()
       {
         a[i] := 0 as addr by {
           assert(a.Length == numVpnParts as int);
@@ -327,13 +333,9 @@ class PageTable{
     assert(pageTableUnique()) by {
       assert(forall i : nat :: (0 <= i < root.Length && root[i].Some?) ==> (i != vpnPart1 as nat) ==> root[i] != entry1);
     }
-    assert(tlbGrounded()) by {
-      assert(pageTableUnique());
-      assert(forall i : nat :: (0 <= i < root.Length && old(root[i]).Some?) ==> old(root[i]) == root[i]);
         //assert(forall i : nat :: (0 <= i < root.Length && i != vpnPart1 as nat) ==> root[i] == old(root[i]));
       //}
       //assert(!old(root[vpnPart1].Some?));
-    }
 
     var entry2: addr := entry1.arr[vpnPart2] by {
       assert(tableArraySize());
@@ -411,7 +413,6 @@ class PageTable{
 
   method allocate(vaddr: addr, size: addr) returns (err: nat)
     requires pageTableInvariant()
-    requires false
     ensures pageTableInvariant()
     ensures tlbKeys == old(tlbKeys)
     ensures tlbVals == old(tlbVals)
@@ -536,8 +537,7 @@ class PageTable{
 
   method translate(vaddr: addr) returns (paddr: addr, ok: bool)
     requires pageTableInvariant()
-    requires false
-    //ensures pageTableInvariant()
+    ensures pageTableInvariant()
     modifies root
     modifies set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr
     modifies tlbKeys, tlbVals, tlbValid, this

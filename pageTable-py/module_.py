@@ -73,31 +73,42 @@ class PageTable:
     def __dafnystr__(self) -> str:
         return "_module.PageTable"
     def tlbInvariant(self):
-        return (((((self.tlbKeys).length(0)) == ((self).tlbSize)) and (((self.tlbVals).length(0)) == ((self).tlbSize))) and (((self.tlbValid).length(0)) == ((self).tlbSize))) and (((0) <= (self.tlbNext)) and ((self.tlbNext) < ((self).tlbSize)))
+        return ((((((self.tlbKeys).length(0)) == ((self).tlbSize)) and (((self.tlbVals).length(0)) == ((self).tlbSize))) and (((self.tlbValid).length(0)) == ((self).tlbSize))) and ((self.tlbKeys) != (self.tlbVals))) and (((0) <= (self.tlbNext)) and ((self.tlbNext) < ((self).tlbSize)))
 
     def pageTableUnique(self):
         def lambda0_(forall_var_0_):
             def lambda1_(forall_var_1_):
-                def lambda2_(forall_var_2_):
-                    def lambda3_(forall_var_3_):
-                        d_3_l_: int = forall_var_3_
-                        return not ((((((((((0) <= (d_0_i_)) and ((d_0_i_) < ((self.root).length(0)))) and (((self.root)[d_0_i_]).is_Some)) and (((0) <= (d_1_j_)) and ((d_1_j_) < ((((self.root)[d_0_i_]).arr).length(0))))) and (((((self.root)[d_0_i_]).arr)[d_1_j_]) != (0))) and (((0) <= (d_2_k_)) and ((d_2_k_) < ((self.root).length(0))))) and (((self.root)[d_2_k_]).is_Some)) and (((0) <= (d_3_l_)) and ((d_3_l_) < ((((self.root)[d_2_k_]).arr).length(0))))) and (((d_0_i_) != (d_2_k_)) or ((d_1_j_) != (d_3_l_)))) or (((((self.root)[d_0_i_]).arr)[d_1_j_]) != ((((self.root)[d_2_k_]).arr)[d_3_l_]))
-
-                    d_2_k_: int = forall_var_2_
-                    return _dafny.quantifier(_dafny.IntegerRange(0, (((self.root)[d_2_k_]).arr).length(0)), True, lambda3_)
-
                 d_1_j_: int = forall_var_1_
-                return _dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda2_)
+                if System_.nat._Is(d_1_j_):
+                    return not (((((((0) <= (d_0_i_)) and ((d_0_i_) < ((self.root).length(0)))) and (((0) <= (d_1_j_)) and ((d_1_j_) < ((self.root).length(0))))) and (((self.root)[d_0_i_]).is_Some)) and (((self.root)[d_1_j_]).is_Some)) and ((d_0_i_) != (d_1_j_))) or (((self.root)[d_0_i_]) != ((self.root)[d_1_j_]))
+                elif True:
+                    return True
 
             d_0_i_: int = forall_var_0_
-            if System_.nat._Is(d_0_i_):
-                return _dafny.quantifier(_dafny.IntegerRange(0, (((self.root)[d_0_i_]).arr).length(0)), True, lambda1_)
+            return _dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda1_)
+
+        def lambda2_(forall_var_2_):
+            def lambda3_(forall_var_3_):
+                def lambda4_(forall_var_4_):
+                    def lambda5_(forall_var_5_):
+                        d_5_l_: int = forall_var_5_
+                        return not ((((((((((0) <= (d_2_i_)) and ((d_2_i_) < ((self.root).length(0)))) and (((self.root)[d_2_i_]).is_Some)) and (((0) <= (d_3_j_)) and ((d_3_j_) < ((((self.root)[d_2_i_]).arr).length(0))))) and (((((self.root)[d_2_i_]).arr)[d_3_j_]) != (0))) and (((0) <= (d_4_k_)) and ((d_4_k_) < ((self.root).length(0))))) and (((self.root)[d_4_k_]).is_Some)) and (((0) <= (d_5_l_)) and ((d_5_l_) < ((((self.root)[d_4_k_]).arr).length(0))))) and (((d_2_i_) != (d_4_k_)) or ((d_3_j_) != (d_5_l_)))) or (((((self.root)[d_2_i_]).arr)[d_3_j_]) != ((((self.root)[d_4_k_]).arr)[d_5_l_]))
+
+                    d_4_k_: int = forall_var_4_
+                    return _dafny.quantifier(_dafny.IntegerRange(0, (((self.root)[d_4_k_]).arr).length(0)), True, lambda5_)
+
+                d_3_j_: int = forall_var_3_
+                return _dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda4_)
+
+            d_2_i_: int = forall_var_2_
+            if System_.nat._Is(d_2_i_):
+                return _dafny.quantifier(_dafny.IntegerRange(0, (((self.root)[d_2_i_]).arr).length(0)), True, lambda3_)
             elif True:
                 return True
 
-        return (((self.root).length(0)) == ((self).numVpnParts)) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda0_))
+        return ((((self.root).length(0)) == ((self).numVpnParts)) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda0_))) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda2_))
 
-    def pageInvariant(self):
+    def tableArraySize(self):
         def lambda0_(forall_var_0_):
             d_0_i_: int = forall_var_0_
             if System_.nat._Is(d_0_i_):
@@ -105,31 +116,75 @@ class PageTable:
             elif True:
                 return True
 
-        def lambda1_(forall_var_1_):
-            def lambda2_(forall_var_2_):
-                d_2_j_: int = forall_var_2_
-                if System_.nat._Is(d_2_j_):
-                    return not (((0) <= (d_2_j_)) and ((d_2_j_) < ((((self.root)[d_1_i_]).arr).length(0)))) or (((((self.root)[d_1_i_]).arr)[d_2_j_]) < (self.currPfn))
+        return _dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda0_)
+
+    def pageInvariant(self):
+        def lambda0_(forall_var_0_):
+            def lambda1_(forall_var_1_):
+                d_1_j_: int = forall_var_1_
+                if System_.nat._Is(d_1_j_):
+                    return not (((0) <= (d_1_j_)) and ((d_1_j_) < ((((self.root)[d_0_i_]).arr).length(0)))) or (((((self.root)[d_0_i_]).arr)[d_1_j_]) < (self.currPfn))
                 elif True:
                     return True
 
-            d_1_i_: int = forall_var_1_
-            if System_.nat._Is(d_1_i_):
-                return not ((((0) <= (d_1_i_)) and ((d_1_i_) < ((self.root).length(0)))) and (((self.root)[d_1_i_]).is_Some)) or (_dafny.quantifier(_dafny.IntegerRange(0, (((self.root)[d_1_i_]).arr).length(0)), True, lambda2_))
+            d_0_i_: int = forall_var_0_
+            if System_.nat._Is(d_0_i_):
+                return not ((((0) <= (d_0_i_)) and ((d_0_i_) < ((self.root).length(0)))) and (((self.root)[d_0_i_]).is_Some)) or (_dafny.quantifier(_dafny.IntegerRange(0, (((self.root)[d_0_i_]).arr).length(0)), True, lambda1_))
             elif True:
                 return True
 
-        return ((((((0) < (self.currPfn)) and ((self.currPfn) < ((self).numVpns))) and (((self.root).length(0)) == ((self).numVpnParts))) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda0_))) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda1_))) and ((self).pageTableUnique())
+        return ((((((0) < (self.currPfn)) and ((self.currPfn) < ((self).numVpns))) and (((self.root).length(0)) == ((self).numVpnParts))) and ((self).tableArraySize())) and (_dafny.quantifier(_dafny.IntegerRange(0, (self.root).length(0)), True, lambda0_))) and ((self).pageTableUnique())
+
+    def tlbUnique(self):
+        def lambda0_(forall_var_0_):
+            def lambda1_(forall_var_1_):
+                d_1_j_: int = forall_var_1_
+                if System_.nat._Is(d_1_j_):
+                    return not (((((((0) <= (d_0_i_)) and ((d_0_i_) < ((self).tlbSize))) and (((0) <= (d_1_j_)) and ((d_1_j_) < ((self).tlbSize)))) and ((d_0_i_) != (d_1_j_))) and ((self.tlbValid)[d_0_i_])) and ((self.tlbValid)[d_1_j_])) or (((self.tlbVals)[d_0_i_]) != ((self.tlbVals)[d_1_j_]))
+                elif True:
+                    return True
+
+            d_0_i_: int = forall_var_0_
+            return _dafny.quantifier(_dafny.IntegerRange(0, (self).tlbSize), True, lambda1_)
+
+        return ((self).tlbInvariant()) and (_dafny.quantifier(_dafny.IntegerRange(0, (self).tlbSize), True, lambda0_))
+
+    def valExists(self, val):
+        def lambda0_(exists_var_0_):
+            def lambda1_(exists_var_1_):
+                d_1_k_: int = exists_var_1_
+                if System_.nat._Is(d_1_k_):
+                    return (((((0) <= (d_0_j_)) and ((d_0_j_) < ((self).numVpnParts))) and (((0) <= (d_1_k_)) and ((d_1_k_) < ((self).numVpnParts)))) and (((self.root)[d_0_j_]).is_Some)) and (((((self.root)[d_0_j_]).arr)[d_1_k_]) == (val))
+                elif True:
+                    return False
+
+            d_0_j_: int = exists_var_0_
+            if True:
+                return _dafny.quantifier(_dafny.IntegerRange(0, (self).numVpnParts), False, lambda1_)
+            elif True:
+                return False
+
+        return _dafny.quantifier(_dafny.IntegerRange(0, 4294967296), False, lambda0_)
+
+    def tlbGrounded(self):
+        def lambda0_(forall_var_0_):
+            d_0_i_: int = forall_var_0_
+            if System_.nat._Is(d_0_i_):
+                return not ((((0) <= (d_0_i_)) and ((d_0_i_) < ((self).tlbSize))) and ((self.tlbValid)[d_0_i_])) or ((self).valExists((self.tlbVals)[d_0_i_]))
+            elif True:
+                return True
+
+        return (((self).tlbInvariant()) and ((self).pageInvariant())) and (_dafny.quantifier(_dafny.IntegerRange(0, (self).tlbSize), True, lambda0_))
 
     def pageTableInvariant(self):
         def lambda0_(forall_var_0_):
             d_0_i_: int = forall_var_0_
             if System_.nat._Is(d_0_i_):
-                return not (((0) <= (d_0_i_)) and ((d_0_i_) < ((self).tlbSize))) or (not ((self.tlbValid)[d_0_i_]) or ((((self.tlbKeys)[d_0_i_]) < ((self).numVpns)) and (((self.tlbVals)[d_0_i_]) < (self.currPfn))))
+                return not (((0) <= (d_0_i_)) and ((d_0_i_) < ((self).tlbSize))) or (not ((self.tlbValid)[d_0_i_]) or ((((self.tlbKeys)[d_0_i_]) < ((self).numVpns)) and (((0) < ((self.tlbVals)[d_0_i_])) and (((self.tlbVals)[d_0_i_]) < (self.currPfn)))))
             elif True:
                 return True
 
-        return (((self).tlbInvariant()) and ((self).pageInvariant())) and (_dafny.quantifier(_dafny.IntegerRange(0, (self).tlbSize), True, lambda0_))
+        return ((((self).tlbInvariant()) and ((self).pageInvariant())) and (_dafny.quantifier(_dafny.IntegerRange(0, (self).tlbSize), True, lambda0_))) and ((self).tlbUnique())
 
     def ctor__(self):
         pass
@@ -222,7 +277,7 @@ class PageTable:
         d_3_entry2_ = ((d_0_entry1_).arr)[vpnPart2]
         if (d_3_entry2_) == (0):
             d_3_entry2_ = pfn
-            arr1_ = (d_0_entry1_).arr
+            arr1_ = ((self.root)[vpnPart1]).arr
             arr1_[(vpnPart2)] = d_3_entry2_
         if (d_3_entry2_) == (pfn):
             d_4_getPfn_: int
@@ -269,12 +324,16 @@ class PageTable:
         out1_, out2_ = (self).maskVpn(d_2_vpn_)
         d_3_part1_ = out1_
         d_4_part2_ = out2_
+        d_5_pfn_: int
+        d_5_pfn_ = self.currPfn
         (self).currPfn = (self.currPfn) + (1)
         out3_: int
-        out3_ = (self).tryInsertMapping(d_3_part1_, d_4_part2_, (self.currPfn) - (1))
+        out3_ = (self).tryInsertMapping(d_3_part1_, d_4_part2_, d_5_pfn_)
         err = out3_
         if (err) == (0):
-            (self).tlbInsert(d_2_vpn_, (self.currPfn) - (1))
+            d_6_tlbI_: int
+            d_6_tlbI_ = self.tlbNext
+            (self).tlbInsert(d_2_vpn_, d_5_pfn_)
         return err
 
     def tlbLookup(self, vpn):
@@ -362,6 +421,7 @@ class PageTable:
         out8_ = (self).buildAddr(d_1_pfn_, d_8_offset_)
         paddr = out8_
         ok = True
+        print(d_1_pfn_)
         return paddr, ok
 
     @property
