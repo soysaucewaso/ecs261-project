@@ -219,7 +219,7 @@ class PageTable:
     def buildAddr(self, pfn, offset):
         a: int = int(0)
         d_0_mask1_: int
-        d_0_mask1_ = 1048575
+        d_0_mask1_ = 1023
         d_1_b1_: int
         d_1_b1_ = (pfn) & (d_0_mask1_)
         d_2_shifted_: int
@@ -236,10 +236,10 @@ class PageTable:
     def getVpn(self, vaddr):
         vpn: int = int(0)
         d_0_mask_: int
-        d_0_mask_ = 4290772992
+        d_0_mask_ = 4294963200
         d_1_bv_: int
         d_1_bv_ = (vaddr) & (d_0_mask_)
-        d_1_bv_ = (d_1_bv_) >> (22)
+        d_1_bv_ = (d_1_bv_) >> (12)
         vpn = d_1_bv_
         return vpn
 
@@ -415,13 +415,15 @@ class PageTable:
                 paddr = 0
                 ok = False
                 return paddr, ok
+        out8_: int
+        out8_ = (self).tryGetMapping(d_5_part1_, d_6_part2_)
+        d_1_pfn_ = out8_
         d_8_offset_: int
         d_8_offset_ = (self).getOffset(vaddr)
-        out8_: int
-        out8_ = (self).buildAddr(d_1_pfn_, d_8_offset_)
-        paddr = out8_
+        out9_: int
+        out9_ = (self).buildAddr(d_1_pfn_, d_8_offset_)
+        paddr = out9_
         ok = True
-        print(d_1_pfn_)
         return paddr, ok
 
     @property

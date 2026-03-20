@@ -206,7 +206,7 @@ class PageTable{
     //ensures (a as bv32 & 0xFFF) == offset as bv32
     //ensures (a as bv32 >> 12) == pfn as bv32
   {
-    var mask1: bv32 := 0xF_FFFF;
+    var mask1: bv32 := 0x03FF;
     var b1 := (pfn as bv32 & mask1);
     //assert(b1 == pfn as bv32);
     assert(b1 <= mask1);
@@ -238,9 +238,9 @@ class PageTable{
 
   method getVpn(vaddr: addr) returns(vpn: addr)
     ensures 0 <= vpn < numVpns{
-    var mask := 0xFFC0_0000;
+    var mask := 0xFFFF_F000;
     var bv := (vaddr as bv32 & mask as bv32);
-    bv := bv >> 22;
+    bv := bv >> 12;
     vpn := bv as addr;
   }
 
@@ -567,6 +567,7 @@ class PageTable{
       }
 
     }
+    pfn := tryGetMapping(part1, part2);
     var offset := getOffset(vaddr);
 
     paddr := buildAddr(pfn, offset);
