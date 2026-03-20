@@ -24,47 +24,48 @@ class PageTable{
   predicate tlbInvariant()
     reads this
     reads tlbValid, tlbKeys, tlbVals
-    {
-   tlbKeys.Length == tlbSize &&
-   tlbVals.Length == tlbSize &&
-   tlbValid.Length == tlbSize &&
-   0 <= tlbNext < tlbSize
-    }
+  {
+    tlbKeys.Length == tlbSize &&
+    tlbVals.Length == tlbSize &&
+    tlbValid.Length == tlbSize &&
+    0 <= tlbNext < tlbSize
+  }
 
   predicate pageTableUnique()
     reads this
     reads root
     reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr else {}
-    {
+  {
     root.Length == numVpnParts as int &&
-  // every nonzero page frame in the pageTable is unique
-  //    equivalent to the following pseudocode assertion
-  //      forall (vpn1, vpn2) in page table,
-  //        pfn1 := pageTable[vpn1]
-  //        pfn2 := pageTable[vpn2]
-  //        assert((vpn1 != vpn2 && pfn1 != 0) ==> pfn1 != pfn2);
-     forall i : nat, j, k, l ::
+    // every nonzero page frame in the pageTable is unique
+    //    equivalent to the following pseudocode assertion
+    //      forall (vpn1, vpn2) in page table,
+    //        pfn1 := pageTable[vpn1]
+    //        pfn2 := pageTable[vpn2]
+    //        assert((vpn1 != vpn2 && pfn1 != 0) ==> pfn1 != pfn2);
+    (forall i, j : nat :: (0 <= i < root.Length && 0 <= j < root.Length && root[i].Some? && root[j].Some? && i != j) ==> root[i] != root[j]) &&
+    forall i : nat, j, k, l ::
       (0 <= i < root.Length && root[i].Some? &&
        0 <= j < root[i].arr.Length && root[i].arr[j] != 0 &&
        0 <= k < root.Length && root[k].Some? &&
        0 <= l < root[k].arr.Length &&
        (i != k || j != l))
       ==> root[i].arr[j] != root[k].arr[l]
-    }
-  
+  }
+
   predicate pageInvariant()
-    reads this 
+    reads this
     reads root
     reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr else {}
-    {
+  {
     0 < currPfn < numVpns &&
-   root.Length == numVpnParts as int &&
-   // all pageTables have exactly `numVpns` entries
-   (forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))) &&
-   (forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j : nat :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn))) &&
-  pageTableUnique()
+    root.Length == numVpnParts as int &&
+    // all pageTables have exactly `numVpns` entries
+    (forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))) &&
+    (forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j : nat :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn))) &&
+    pageTableUnique()
 
-    }
+  }
 
   predicate pageTableInvariant()
     reads this
@@ -72,9 +73,9 @@ class PageTable{
     reads tlbValid, tlbKeys, tlbVals
     reads if (root.Length == numVpnParts as int) then set i | 0 <= i < numVpnParts && root[i].Some? :: root[i].arr else {}
   {
-   tlbInvariant() && pageInvariant() &&
-   // when valid, TLB entries carry valid vpn/pfn ranges
-   (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < currPfn))) 
+    tlbInvariant() && pageInvariant() &&
+    // when valid, TLB entries carry valid vpn/pfn ranges
+    (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < currPfn)))
   }
 
   constructor()
@@ -96,7 +97,7 @@ class PageTable{
       invariant 0 <= i <= root.Length
       invariant forall j: nat :: 0 <= j < i ==> root[j] == Nil
       invariant fresh(root)
-      {
+    {
       root[i] := Nil by {
         assert(root.Length == numVpnParts as int);
 
@@ -236,7 +237,7 @@ class PageTable{
     requires forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < pfn))
     ensures 0 <= err <= 1
     ensures pageTableInvariant()
-    ensures err == 0 ==> root[vpnPart1].Some? && root[vpnPart1].arr[vpnPart2] == pfn
+    ensures err == 0 ==> root[vpnPart1].Some? && root[vpnPart1].arr.Length == numVpnParts as nat && root[vpnPart1].arr[vpnPart2] == pfn
     ensures (err != 0 && old(root[vpnPart1].Some?)) ==> root[vpnPart1].Some?    && root[vpnPart1].arr == old(root[vpnPart1].arr)
     modifies root
     modifies if root[vpnPart1].Some? then {root[vpnPart1].arr} else {}
@@ -258,6 +259,8 @@ class PageTable{
         invariant forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int))
         invariant forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < currPfn))
         invariant forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < pfn))
+        invariant forall i : nat :: (0 <= i < root.Length && root[i].Some?) ==> (i != vpnPart1 as nat) ==> root[i] == old(root[i])
+        invariant forall i : nat :: (0 <= i < root.Length && root[i].Some?) ==> (i != vpnPart1 as nat) ==> root[i].arr != a
         invariant pageTableUnique()
       {
         a[i] := 0 as addr by {
@@ -277,7 +280,9 @@ class PageTable{
 
 
     assert entry1.Some?;
-    assert(pageTableUnique());
+    assert(pageTableUnique()) by {
+      assert(forall i : nat :: (0 <= i < root.Length && root[i].Some?) ==> (i != vpnPart1 as nat) ==> root[i] != entry1);
+    }
 
     var entry2: addr := entry1.arr[vpnPart2] by {
       assert(forall i : nat :: ((0 <= i < root.Length) ==> (root[i] == Nil || root[i].arr.Length == numVpnParts as int)));
@@ -288,14 +293,22 @@ class PageTable{
       assert(forall i : nat :: ((0 <= i < root.Length && root[i].Some?) ==> (forall j :: (0 <= j < root[i].arr.Length) ==> root[i].arr[j] < pfn)));
       entry2 := pfn;
       assert(forall i, j : nat :: (0 <= i < root.Length && root[i].Some? && 0 <= j < root[i].arr.Length) ==> (i == vpnPart1 as nat && j == vpnPart2 as nat) || root[i].arr[j] != pfn);
-      entry1.arr[vpnPart2] := entry2;
+      root[vpnPart1].arr[vpnPart2] := entry2;
       assert(entry2 < currPfn);
-    assume(pageTableUnique());/* by {
-      //assert(forall i, j : nat :: (0 <= i < root.Length && root[i].Some? && 0 <= j < root[i].arr.Length) ==> (i == vpnPart1 as nat && j == vpnPart2 as nat) || root[i].arr[j] != root[vpnPart1].arr[vpnPart2]);
-      assert(root[vpnPart1].arr[vpnPart2] == pfn);
-      assume(forall i, j : nat :: (0 <= i < root.Length && root[i].Some? && 0 <= j < root[i].arr.Length) ==> (i == vpnPart1 as nat && j == vpnPart2 as nat) || root[i].arr[j] != pfn);
-    }
-    */
+      assert(pageTableUnique()) by {
+        assert(forall i, j : nat :: (0 <= i < root.Length && root[i].Some? && 0 <= j < root[i].arr.Length) ==> (i == vpnPart1 as nat && j == vpnPart2 as nat) || root[i].arr[j] != root[vpnPart1].arr[vpnPart2]) by {
+          assert(forall i, j : nat :: (0 <= i < root.Length && root[i].Some? && old(root[i].Some?) && 0 <= j < root[i].arr.Length) ==> (i != vpnPart1 as nat || j != vpnPart2 as nat) ==> root[i].arr[j] == old(root[i].arr[j])) by {
+            assert(forall i, j : nat :: (0 <= i < root.Length && root[i].Some? && old(root[i].Some?) && 0 <= j < root[i].arr.Length) ==> (i != vpnPart1 as nat) ==> root[i].arr[j] == old(root[i].arr[j])) by {
+              assert(root[vpnPart1].arr[vpnPart2] == pfn);
+              assert(forall i : nat :: (0 <= i < root.Length && root[i].Some?) ==> (i != vpnPart1 as nat) ==> root[i] == old(root[i]));
+              assert(forall i, j : nat :: (0 <= i < root.Length && 0 <= j < root.Length && root[i].Some? && root[j].Some? && i != j) ==> root[i] != root[j]);
+
+            }
+            assert(forall j : nat :: (0 <= j < root[vpnPart1].arr.Length && old(root[vpnPart1].Some?)) ==> (j != vpnPart2 as nat) ==> root[vpnPart1].arr[j] == old(root[vpnPart1].arr[j]));
+          }
+        }
+
+      }
     }
 
 
@@ -446,21 +459,21 @@ class PageTable{
   {
     var vpn := getVpn(vaddr);
     var pfn, hit := tlbLookup(vpn);
-    
+
     if (hit) {
       var offset := getOffset(vaddr);
       var phys := buildAddr(pfn, offset);
       paddr := phys as addr;
       ok := true;
       return;
-    } 
-    
+    }
+
 
     var part1, part2 := maskVpn(vpn);
     pfn := tryGetMapping(part1, part2);
 
     if (pfn == 0){
-      
+
       var err := allocate(vaddr, 1);
       if (err != 0) {
         paddr := 0;

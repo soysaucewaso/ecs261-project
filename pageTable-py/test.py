@@ -7,6 +7,7 @@ def test():
     # pt.allocate(2,16)
 
     print(pt.translate(2))
+    print(pt.translate(20002))
 
     print("tested successfully")
 
