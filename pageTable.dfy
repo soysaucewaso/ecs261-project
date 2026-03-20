@@ -28,6 +28,7 @@ class PageTable{
     tlbKeys.Length == tlbSize &&
     tlbVals.Length == tlbSize &&
     tlbValid.Length == tlbSize &&
+    tlbKeys != tlbVals &&
     0 <= tlbNext < tlbSize
   }
 
@@ -75,7 +76,9 @@ class PageTable{
   {
     tlbInvariant() && pageInvariant() &&
     // when valid, TLB entries carry valid vpn/pfn ranges
-    (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < currPfn)))
+    (forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < currPfn))) 
+    //(forall i, j: nat :: 0 <= i < tlbSize as int && 0 <= j < tlbSize as int && i != j ==> (tlbValid[i] ==> (tlbKeys[i] != tlbKeys[j]))) &&
+    //(forall i, j: nat :: 0 <= i < tlbSize as int && 0 <= j < tlbSize as int && i != j ==> (tlbValid[i] ==> (tlbVals[i] != tlbVals[j])))
   }
 
   constructor()
@@ -379,13 +382,25 @@ class PageTable{
     var vpn := getVpn(vaddr);
 
     var part1, part2 := maskVpn(vpn);
+    assert(forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < currPfn)));
+    var pfn := currPfn;
     currPfn := currPfn + 1;
 
-    err := tryInsertMapping(part1, part2, currPfn - 1);
+    err := tryInsertMapping(part1, part2, pfn);
     if (err == 0) {
       // warm the TLB with the new mapping
       // assumes err code 0 means no error
-      tlbInsert(vpn, currPfn - 1);
+      var tlbI := tlbNext;
+      assert(forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < pfn)));
+      tlbInsert(vpn, pfn) by {
+        assert(forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < pfn)));
+      }
+      assert(root[part1].Some? && root[part1].arr.Length == numVpnParts as nat && root[part1].arr[part2] == pfn) by {
+        assert(err == 0);
+        assert(err == 0 ==> root[part1].Some? && root[part1].arr.Length == numVpnParts as nat && root[part1].arr[part2] == pfn);
+      }
+      assert(tlbKeys[tlbI] == vpn);
+      assert(tlbVals[tlbI] == pfn);
     }
   }
 
@@ -415,17 +430,27 @@ class PageTable{
     requires pageTableInvariant()
     requires vpn < numVpns
     requires pfn < currPfn
+    requires forall i: nat :: 0 <= i < tlbSize as int ==> (tlbValid[i] ==> (tlbKeys[i] < numVpns && tlbVals[i] < pfn))
     ensures pageTableInvariant()
     ensures tlbKeys == old(tlbKeys)
     ensures tlbVals == old(tlbVals)
     ensures tlbValid == old(tlbValid)
+    ensures tlbValid[old(tlbNext)] == true
+    ensures tlbKeys[old(tlbNext)] == vpn
+    ensures tlbVals[old(tlbNext)] == pfn
+    ensures root == old(root)
     modifies tlbKeys, tlbVals, tlbValid, this
   {
     var idx := tlbNext as int;
     tlbKeys[idx] := vpn;
+    assert(tlbKeys[idx] == vpn);
     tlbVals[idx] := pfn;
     tlbValid[idx] := true;
 
+    assert(old(tlbNext) == idx);
+    assert(tlbValid[old(tlbNext)] == true);
+    assert(tlbKeys[old(tlbNext)] == vpn);
+    assert(tlbVals[old(tlbNext)] == pfn);
     if tlbNext + 1 < tlbSize as nat {
       tlbNext := tlbNext + 1;
     } else {
